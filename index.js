@@ -1,17 +1,3 @@
-/*document.addEventListener('DOMContentLoaded', function () {
-    const player = document.getElementById('player');
-    const file = document.getElementById('file');
-    file.addEventListener('change', function () {
-        const files = this.files;
-        if (files.length === 0) {
-            return;
-        }
-        const file = files[0];
-        const url = URL.createObjectURL(file);
-        player.loadURL(url);
-    }
-});*/
-
 const CLEAN_US_SHA1 = '5fa96ca8d8dd6405d6cd2bad73ed68bc73a9d152';
 const CLEAN_EU_SHA1 = 'c838a5adf1ed32d2da8454976e5b1a1aa189c139';
 
@@ -130,25 +116,49 @@ function reportError(error) {
     } else if (!(error instanceof UserError)) {
         text = 'An error occured.<br><br>';
     }
-    document.getElementById('error').innerHTML = `${text}${error}`;
+
+    for (const errorElem of document.querySelectorAll('.error')) {
+        errorElem.innerHTML = `${text}${error}`;
+    }
+}
+
+function removeError() {
+    for (const errorElem of document.querySelectorAll('.error')) {
+        errorElem.innerHTML = '';
+    }
+}
+
+function loadPlayer(url, name) {
+    const background = document.querySelector('.background');
+    background.classList.add('hidden');
+
+    const playerContainer = document.getElementById('player-container');
+    playerContainer.classList.remove('hidden');
+
+    const player = document.getElementById('player');
+    player.loadURL(url);
+
+    document.title = `${name} - EoS Hack Player`;
 }
 
 async function createPatchSelect(links) {
     const select = document.getElementById('patch-select');
     select.innerHTML = '';
 
-    for (const link of links) {
+    for (const [i, link] of links.entries()) {
         const option = document.createElement('option');
-        option.value = link.patch;
+        option.value = i;
         option.innerText = `${link.name} (by ${link.author})`;
         select.appendChild(option);
     }
+
+    globalThis.links = links;
 }
 
 async function downloadLinks() {
     const result = await fetch('links.json');
     if (!result.ok) {
-        throw new HttpStatusError(`Failed to fetch patch links (code ${result.status})`, result.status);
+        throw new HttpStatusError(`Failed to fetch patch links(code ${result.status})`, result.status);
     }
     return await result.json();
 }
@@ -171,13 +181,24 @@ document.addEventListener('DOMContentLoaded', () => {
             || !fileInput.files[0].name.endsWith('.nds');
     });
 
+    document.getElementById('fullscreen').addEventListener('click', () => {
+        const player = document.getElementById('player-container');
+        if (player.webkitRequestFullscreen) {
+            player.webkitRequestFullscreen();
+        } else if (player.requestFullscreen) {
+            player.requestFullscreen();
+        }
+    });
+
     submitButton.addEventListener('click', async () => {
         submitButton.disabled = true;
         submitButton.innerText = 'Patching (1/7)...';
-        document.getElementById('error').innerText = '';
+        removeError();
 
         try {
-            const patchUrl = document.getElementById('patch-select').value;
+            const patchIndex = parseInt(document.getElementById('patch-select').value);
+            const link = globalThis.links[patchIndex];
+            const patchUrl = link.patch;
 
             const file = fileInput.files[0];
 
@@ -213,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await new Promise(resolve => setTimeout(resolve, 20)); // Update the UI
 
                 expectedSha1 = getCleanSha1ForRegion(patchRegion);
-                console.log(`Validating checksum against clean SHA-1 "${expectedSha1}"`);
+                console.log(`Validating checksum against clean SHA - 1 "${expectedSha1}"`);
                 const romSha1 = sha1(romInExpectedRegion);
                 if (romSha1 !== expectedSha1) {
                     throw new Error(`Failed to clean rom or transition region(checksum mismatch: ${romSha1})`);
@@ -235,15 +256,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            const name = patchName || patchUrl ? getPatchNameFromUrl(patchUrl) : 'clean';
             const url = createUrlFromBytes(patchedRom);
-            document.getElementById('player').loadURL(url);
+
+            loadPlayer(url, link.name);
         } catch (e) {
             reportError(e);
             console.error(e);
         } finally {
             submitButton.disabled = false;
-            submitButton.innerText = 'Apply Patch';
+            submitButton.innerText = 'Download and Patch';
         }
     });
 });
+
+document.addEventListener('fullscreenchange', onFullScreenChange);
+
+function onFullScreenChange() {
+    if (document.fullscreenElement) {
+        document.getElementById('fullscreen').classList.add('hidden');
+    } else {
+        document.getElementById('fullscreen').classList.remove('hidden');
+    }
+}

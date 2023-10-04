@@ -50,11 +50,18 @@
                 <div class="progress-button"></div>
                 <button id="submit" type="button" class="apply-button" disabled>Download and patch</button>
             </div>
-            <p id="error"></p>
-
-            <h2>3. Play the game</h2>
-            <desmond-player id="player"></desmond-player>
+            <p class="error"></p>
         </div>
+    </div>
+
+    <div id="player-container" class="hidden">
+        <div class="controls">
+            <button id="fullscreen">Enter Fullscreen</button>
+        </div>
+
+        <p class="error"></p>
+        <desmond-player id="player"></desmond-player>
+    </div>
 </body>
 
 </html>
