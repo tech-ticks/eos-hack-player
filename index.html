@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>EoS Hack Player</title>
+
+    <script src="https://unpkg.com/js-sha1@0.6.0/src/sha1.js"></script>
+    <script src="vendor/vcdiff.js"></script>
+    <script src="index.js" type="module"></script>
+    <script src="https://cdn.jsdelivr.net/gh/Unzor/desmond/cdn/desmond.min.js" defer></script>
+
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Oswald:wght@200;300;400;500;600;700&amp;display=swap">
+</head>
+
+<body>
+    <div class="wrapper">
+        <div class="background">
+            <h1>EoS Hack Player</h1>
+
+            <h2>1. Open your Explorers of Sky ROM</h2>
+            <p>
+                Your ROM will not be uploaded anywhere. It will be patched in your browser.
+            </p>
+
+            <div class="input-wrapper">
+                <label for="rom-file">Select or Drag and Drop a ROM file:</label>
+                <input id="rom-file" type="file">
+            </div>
+
+            <h2>2. Choose a ROM hack to play</h2>
+            <p>
+                Choose one of the hacks from this list.
+            </p>
+            <p>
+                This list doesn't have any special meaning, it's just a list of all hacks
+                that are available as standalone .xdelta files (no .zip file) without secondary compression.
+                Some of these patches might be outdated.
+            </p>
+
+            <div class="input-wrapper">
+                <label for="patch-select">Select a ROM hack:</label>
+                <select id="patch-select">
+                    <option value="none">Loading...</option>
+                </select>
+            </div>
+
+            <div class="button-container">
+                <div class="progress-button"></div>
+                <button id="submit" type="button" class="apply-button" disabled>Download and patch</button>
+            </div>
+            <p id="error"></p>
+
+            <h2>3. Play the game</h2>
+            <desmond-player id="player"></desmond-player>
+        </div>
+</body>
+
+</html>
