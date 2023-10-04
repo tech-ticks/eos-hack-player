@@ -28,5 +28,10 @@
     "name": "Explorers of the Azure Sky",
     "patch": "./xdelta/Explorers_of_the_Azure_Sky.xdelta",
     "author": "Mr. L"
+  },
+  {
+    "name": "Strung Up By Sketches",
+    "patch": "./xdelta/SKETCHES.xdelta",
+    "author": "Adex, Irdkwia, and Techticks"
   }
 ]
