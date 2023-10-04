@@ -1,32 +1,32 @@
 [
   {
     "name": "PMD: Chip",
-    "patch": "https://cdn.discordapp.com/attachments/769498453126283274/797489022641242132/chip.xdelta?ex=651ed807&is=651d8687&hm=4a1b28f71af57a1b5b329a4beaad41b4d2a1739a7744c2c464d5d433c78b34ff",
+    "patch": "./xdelta/chip.xdelta",
     "author": "Miju"
   },
   {
     "name": "PMD Chip 2: Apple Alliance",
-    "patch": "https://cdn.discordapp.com/attachments/769498453126283274/1037115061354897478/chip2.xdelta?ex=651e80eb&is=651d2f6b&hm=cb3de558dad33ef8b1d15bc4617a42ea24dc52de8e6e95a5b70db41b4ec929fc",
+    "patch": "./xdelta/chip2.xdelta",
     "author": "Miju"
   },
   {
     "name": "BLORG",
-    "patch": "https://cdn.discordapp.com/attachments/769498453126283274/1037182123326590996/PMD_BLORG_HOTY-Edition-2022.xdelta?ex=651ebf60&is=651d6de0&hm=1f35dda609398ec8130b893fc293e6901c1a5396c7685e95ea7248c691a64fd5",
+    "patch": "./xdelta/PMD_BLORG_HOTY-Edition-2022.xdelta",
     "author": "Mattshark and NikolaP"
   },
   {
     "name": "Explorers of Pain Demo",
-    "patch": "https://cdn.discordapp.com/attachments/769498453126283274/947228958133456966/EXPLORERS_OF_PAIN_DEMO.xdelta?ex=651e73f6&is=651d2276&hm=1ecd1adef4e5db7643266e0a6739fa1be03f89ef5f275da1d969872095a2d21c",
+    "patch": "./xdelta/EXPLORERS_OF_PAIN_DEMO.xdelta",
     "author": "Solargress"
   },
   {
     "name": "Bad EGG Myst3ry Dung30n",
-    "patch": "https://cdn.discordapp.com/attachments/769498453126283274/944614908421636146/Bad_EGG_Myst3ry_Dung30n_-_3ggsp0r3rs_0f_REDACTED.xdelta?ex=651ed4b0&is=651d8330&hm=787cf2f7a39c1e59fd49fec893ae52b9fb05397899fdf6d4df8b2bfe4430fd0e",
+    "patch": "./xdelta/Bad_EGG_Myst3ry_Dung30n_-_3ggsp0r3rs_0f_REDACTED.xdelta",
     "author": "dist_man_k"
   },
   {
     "name": "Explorers of the Azure Sky",
-    "patch": "https://cdn.discordapp.com/attachments/769498453126283274/871617181417357323/Explorers_of_the_Azure_Sky.xdelta?ex=651eea81&is=651d9901&hm=34ee97f69993a55df5849a8c53ec3ec1b25e76ae3e107b8aee42cb191000c43e",
+    "patch": "./xdelta/Explorers_of_the_Azure_Sky.xdelta",
     "author": "Mr. L"
   }
 ]

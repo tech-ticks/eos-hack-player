@@ -177,8 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('error').innerText = '';
 
         try {
-            const rawPatchUrl = document.getElementById('patch-select').value;
-            const patchUrl = 'https://proxy.cors.sh/' + rawPatchUrl;
+            const patchUrl = document.getElementById('patch-select').value;
 
             const file = fileInput.files[0];
 
