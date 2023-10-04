@@ -270,6 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener('fullscreenchange', onFullScreenChange);
+document.addEventListener('webkitfullscreenchange', onFullScreenChange);
 
 function onFullScreenChange() {
     if (document.fullscreenElement) {
