@@ -129,6 +129,9 @@ function removeError() {
 }
 
 function loadPlayer(url, name) {
+    // Patch desmond's keymap
+    desmondPatch();
+
     const background = document.querySelector('.background');
     background.classList.add('hidden');
 
@@ -199,6 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const patchIndex = parseInt(document.getElementById('patch-select').value);
             const link = globalThis.links[patchIndex];
             const patchUrl = link.patch;
+            const patchRegion = link.region ?? 'us';
 
             const file = fileInput.files[0];
 
@@ -212,12 +216,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const rom = await readPromise;
 
-            let patch, patchRegion;
+            let patch;
             if (patchUrl) {
                 submitButton.innerText = 'Patching (2/7)...';
                 const result = await downloadPatch(patchUrl, region);
                 patch = result.patch;
-                patchRegion = result.region;
             }
 
             submitButton.innerText = 'Patching (3/7)...';
@@ -278,4 +281,49 @@ function onFullScreenChange() {
     } else {
         document.getElementById('fullscreen').classList.remove('hidden');
     }
+}
+
+// Replace Desmond's keymap
+function desmondPatch() {
+    window.onkeydown = window.onkeyup = (e) => {
+        // Copied from Desmond library code
+        if (!emuIsRunning) {
+            return
+        }
+        e.preventDefault()
+        var isDown = (e.type === "keydown")
+        var k = convertKeyCode(e.keyCode)
+        if (k >= 0) {
+            emuKeyState[k] = isDown
+        }
+        if (e.keyCode == 27) {
+            uiSwitchTo('menu')
+        }
+    }
+}
+
+function convertKeyCode(keyCode) {
+    const keyboardMappings = [
+        39,
+        37,
+        40,
+        38,
+        16,
+        13,
+        90,
+        88,
+        65,
+        83,
+        81,
+        87,
+        -1, // Debug button
+        8
+    ];
+
+    for (var i = 0; i < 14; i++) {
+        if (keyCode == keyboardMappings[i]) {
+            return i
+        }
+    }
+    return -1
 }
