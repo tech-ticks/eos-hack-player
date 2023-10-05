@@ -1,4 +1,5 @@
 import links from './links.js';
+import { initSettingsView, isSettingsMenuOpen, keyboardMappings, loadKeyBindings } from './settings.js';
 
 const CLEAN_US_SHA1 = '5fa96ca8d8dd6405d6cd2bad73ed68bc73a9d152';
 const CLEAN_EU_SHA1 = 'c838a5adf1ed32d2da8454976e5b1a1aa189c139';
@@ -247,15 +248,6 @@ document.addEventListener('DOMContentLoaded', () => {
         saveButton.disabled = disabled;
     });
 
-    document.getElementById('fullscreen').addEventListener('click', () => {
-        const player = document.getElementById('player-container');
-        if (player.webkitRequestFullscreen) {
-            player.webkitRequestFullscreen();
-        } else if (player.requestFullscreen) {
-            player.requestFullscreen();
-        }
-    });
-
     const onClick = async (shouldPlay) => {
         playButton.classList.add('hidden');
         saveButton.classList.add('hidden');
@@ -290,6 +282,27 @@ document.addEventListener('DOMContentLoaded', () => {
     saveButton.addEventListener('click', async () => {
         await onClick(false);
     });
+
+    loadKeyBindings();
+    initSettingsView();
+
+    document.getElementById('fullscreen').addEventListener('click', () => {
+        const player = document.getElementById('player-container');
+        if (player.webkitRequestFullscreen) {
+            player.webkitRequestFullscreen();
+        } else if (player.requestFullscreen) {
+            player.requestFullscreen();
+        }
+    });
+
+    document.getElementById('settings').addEventListener('click', () => {
+        const settings = document.getElementById('settings-menu');
+        settings.classList.remove('hidden');
+    });
+
+    document.getElementById('back').addEventListener('click', () => {
+        window.location.reload();
+    });
 });
 
 document.addEventListener('fullscreenchange', onFullScreenChange);
@@ -307,43 +320,26 @@ function onFullScreenChange() {
 function desmondPatch() {
     window.onkeydown = window.onkeyup = (e) => {
         // Copied from Desmond library code
-        if (!emuIsRunning) {
-            return
+        if (!emuIsRunning || isSettingsMenuOpen()) {
+            return;
         }
-        e.preventDefault()
-        var isDown = (e.type === "keydown")
-        var k = convertKeyCode(e.keyCode)
+        var isDown = (e.type === "keydown");
+        var k = convertKey(e.key);
         if (k >= 0) {
-            emuKeyState[k] = isDown
+            emuKeyState[k] = isDown;
+            e.preventDefault();
         }
         if (e.keyCode == 27) {
-            uiSwitchTo('menu')
+            uiSwitchTo('menu');
         }
     }
 }
 
-function convertKeyCode(keyCode) {
-    const keyboardMappings = [
-        39,
-        37,
-        40,
-        38,
-        16,
-        13,
-        90,
-        88,
-        65,
-        83,
-        81,
-        87,
-        -1, // Debug button
-        8
-    ];
-
-    for (var i = 0; i < 14; i++) {
+function convertKey(keyCode) {
+    for (var i = 0; i < keyboardMappings.length; i++) {
         if (keyCode == keyboardMappings[i]) {
-            return i
+            return i;
         }
     }
-    return -1
+    return -1;
 }

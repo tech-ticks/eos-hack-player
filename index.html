@@ -5,10 +5,10 @@
     <title>EoS Hack Player</title>
 
     <script src="vendor/vcdiff.js"></script>
-    <script src="index.js" type="module"></script>
+    <script src="index.js?v=2" type="module"></script>
     <script src="https://cdn.jsdelivr.net/gh/Unzor/desmond/cdn/desmond.min.js" defer></script>
 
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Oswald:wght@200;300;400;500;600;700&amp;display=swap">
     <link rel="stylesheet"
@@ -75,9 +75,9 @@
 
     <div id="player-container" class="hidden">
         <div class="controls">
-            <button id="fullscreen">
+            <button id="back">
                 <span class="material-symbols-outlined">
-                    fullscreen
+                    arrow_back
                 </span>
             </button>
             <button id="settings">
@@ -85,10 +85,86 @@
                     settings
                 </span>
             </button>
+            <button id="fullscreen">
+                <span class="material-symbols-outlined">
+                    fullscreen
+                </span>
+            </button>
         </div>
 
         <p class="error"></p>
         <desmond-player id="player"></desmond-player>
+    </div>
+
+    <div class="settings-menu hidden" id="settings-menu">
+        <button id="close-settings" class="close-button">
+            <span class="material-symbols-outlined">
+                close
+            </span>
+        </button>
+
+        <h2>Keyboard bindings</h2>
+
+        <div class="input-wrapper">
+            <label for="button-a">A</label>
+            <button id="button-a" class="key-button" data-key="a">Key</button>
+        </div>
+        <div class="input-wrapper">
+            <label for="button-b">B</label>
+            <button id="button-b" class="key-button" data-key="b">Key</button>
+        </div>
+        <div class="input-wrapper">
+            <label for="button-x">X</label>
+            <button id="button-x" class="key-button" data-key="x">Key</button>
+        </div>
+        <div class="input-wrapper">
+            <label for="button-y">Y</label>
+            <button id="button-y" class="key-button" data-key="y">Key</button>
+        </div>
+        <div class="input-wrapper">
+            <label for="button-l">L</label>
+            <button id="button-l" class="key-button" data-key="l">Key</button>
+        </div>
+        <div class="input-wrapper">
+            <label for="button-r">R</label>
+            <button id="button-r" class="key-button" data-key="r">Key</button>
+        </div>
+        <div class="input-wrapper">
+            <label for="button-start">Start</label>
+            <button id="button-start" class="key-button" data-key="start">Key</button>
+        </div>
+        <div class="input-wrapper">
+            <label for="button-select">Select</label>
+            <button id="button-select" class="key-button" data-key="select">Key</button>
+        </div>
+        <div class="input-wrapper">
+            <label for="button-up">Up</label>
+            <button id="button-up" class="key-button" data-key="up">Key</button>
+        </div>
+        <div class="input-wrapper">
+            <label for="button-down">Down</label>
+            <button id="button-down" class="key-button" data-key="down">Key</button>
+        </div>
+        <div class="input-wrapper">
+            <label for="button-left">Left</label>
+            <button id="button-left" class="key-button" data-key="left">Key</button>
+        </div>
+        <div class="input-wrapper">
+            <label for="button-right">Right</label>
+            <button id="button-right" class="key-button" data-key="right">Key</button>
+        </div>
+        <div class="input-wrapper">
+            <label for="button-debug">Debug</label>
+            <button id="button-debug" class="key-button" data-key="debug">Key</button>
+        </div>
+        <div class="input-wrapper">
+            <label for="button-lid">Open/Close Lid</label>
+            <button id="button-lid" class="key-button" data-key="lid">Key</button>
+        </div>
+
+        <button id="reset-keys" type="button">
+            Reset to default
+        </button>
     </div>
 </body>
 

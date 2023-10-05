@@ -128,7 +128,7 @@ button[disabled] {
 
 #player-container {
     background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(3px);
+    backdrop-filter: blur(7px);
     width: 100%;
     height: 100%;
     position: fixed;
@@ -159,6 +159,18 @@ button[disabled] {
     position: relative;
     z-index: 100;
     background: none;
+    padding: 12px;
+    border-radius: 0;
+}
+
+.controls button:last-child {
+    border-bottom-right-radius: 8px;
+}
+
+.controls button:hover,
+.controls button:focus,
+.controls button:active {
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
 @media (min-height: 605px) {
@@ -195,4 +207,34 @@ button[disabled] {
     #player {
         transform: scale(4.0);
     }
+}
+
+.settings-menu {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(8px);
+    padding: 16px 32px;
+    border-radius: 16px;
+}
+
+.settings-menu button {
+    padding: 8px 16px;
+}
+
+.settings-menu .input-wrapper {
+    margin-bottom: 4px;
+}
+
+.close-button,
+.close-button:disabled {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    padding: 8px;
+    color: black;
 }
