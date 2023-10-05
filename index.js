@@ -1,4 +1,5 @@
 import links from './links.js';
+import { readSaveData } from './pmd-save.js';
 import { initSettingsView, isSettingsMenuOpen, keyboardMappings, loadKeyBindings } from './settings.js';
 
 const CLEAN_US_SHA1 = '5fa96ca8d8dd6405d6cd2bad73ed68bc73a9d152';
@@ -68,6 +69,11 @@ async function ensureExpectedRegion(rom, romRegion, expectedRegion) {
     }
 }
 
+function isSaveDataGarbage(saveData) {
+    // The game sometimes saves 0xff garbage data for some reason
+    return saveData.length < 4 || (saveData[0] == 0xff && saveData[1] == 0xff && saveData[2] == 0xff && saveData[3] == 0xff);
+}
+
 function getAndCheckRomRegion(rom) {
     // Read ROM region from gamecode (see http://problemkaputt.de/gbatek.htm#dscartridgeheader)
     const regionCode = String.fromCharCode(rom[0xF]);
@@ -80,6 +86,34 @@ function getAndCheckRomRegion(rom) {
     } else {
         throw new UserError('The region of your ROM is not supported. Only US, EU and Japanese roms are currently supported.');
     }
+}
+
+async function selectAndReadFileAsArrayBuffer() {
+    return new Promise((resolve, reject) => {
+        const inputElement = document.createElement('input');
+        inputElement.type = 'file';
+
+        inputElement.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    resolve(e.target.result);
+                };
+
+                reader.onerror = function (e) {
+                    reject(new Error("Error reading file: " + e));
+                };
+
+                reader.readAsArrayBuffer(file);
+            } else {
+                resolve(null);
+            }
+        });
+
+        inputElement.click();
+    });
 }
 
 function saveFile(bytes, name) {
@@ -129,6 +163,10 @@ function removeError() {
     }
 }
 
+async function loadSaveData(gameId) {
+    return localforage.getItem('save-' + gameId);
+}
+
 async function loadPlayer(url, gameId, name) {
     // Patch desmond's keymap
     desmondPatch();
@@ -139,7 +177,7 @@ async function loadPlayer(url, gameId, name) {
     const playerContainer = document.getElementById('player-container');
     playerContainer.classList.remove('hidden');
 
-    const saveData = await localforage.getItem('save-' + gameId);
+    const saveData = await loadSaveData(gameId);
 
     const player = document.getElementById('player');
     player.loadURL(url, () => {
@@ -172,12 +210,12 @@ async function loadPlayer(url, gameId, name) {
         const ptr = Module._savGetPointer(0);
         const buffer = new Uint8Array(size);
         buffer.set(Module.HEAPU8.subarray(ptr, ptr + size));
-        if (buffer[0] == 0xff) {
+        if (!isSaveDataGarbage(buffer)) {
             alert('No save data found, please save your game first.');
             return;
         }
 
-        saveFile(buffer, gameId + '.sav');
+        saveFile(buffer, name + '.sav');
     });
 
     let previousSaveFlag = 0;
@@ -193,10 +231,13 @@ async function loadPlayer(url, gameId, name) {
             const buffer = new Uint8Array(size);
             buffer.set(Module.HEAPU8.subarray(ptr, ptr + size));
 
-            // desmond.js auto-loads a save file with this naming convention
-            localforage.setItem('save-' + gameId, buffer).then(() => {
-                console.log('Game saved.');
-            });
+            // The game sometimes saves 0xff garbage data for some reason
+            if (size > 0 && !isSaveDataGarbage(buffer)) {
+                // desmond.js auto-loads a save file with this naming convention
+                localforage.setItem('save-' + gameId, buffer).then(() => {
+                    console.log('Game saved.');
+                });
+            }
         }
         previousSaveFlag = saveFlag;
     }, 1000);
@@ -209,7 +250,7 @@ async function createPatchSelect(links) {
     for (const [i, link] of links.entries()) {
         const option = document.createElement('option');
         option.value = i;
-        option.innerText = `${link.name} (by ${link.author})`;
+        option.innerText = link.name;
         select.appendChild(option);
     }
 }
@@ -351,7 +392,126 @@ document.addEventListener('DOMContentLoaded', () => {
             player.requestFullscreen();
         }
     });
+
+    document.getElementById('patch-select').addEventListener('change', async () => {
+        const patch = selectedHack();
+        if (patch) {
+            localStorage.setItem('last-patch', patch.id);
+        }
+        await updateHackInfo();
+    });
+
+    const lastPatch = localStorage.getItem('last-patch');
+    if (lastPatch) {
+        const patchIndex = links.findIndex(link => link.id === lastPatch);
+        if (patchIndex >= 0) {
+            document.getElementById('patch-select').value = patchIndex;
+        }
+    }
+    updateHackInfo(); // Update the hack info on page load
+
+    document.getElementById('load-save').addEventListener('click', async () => {
+        const file = await selectAndReadFileAsArrayBuffer();
+        if (!file) return;
+
+        const selectedPatchIndex = parseInt(document.getElementById('patch-select').value);
+        const selectedPatch = links[selectedPatchIndex];
+
+        try {
+            if (isSaveDataGarbage(file)) {
+                throw new Error('The provided save file is invalid.');
+            }
+
+            const saveData = readSaveData(file);
+            console.log('Read save data:', saveData);
+
+            const saveDataBuffer = new Uint8Array(file);
+            await localforage.setItem('save-' + selectedPatch.id, saveDataBuffer);
+            console.log('Stored save data.');
+
+            await updateHackInfo();
+        } catch (e) {
+            reportError(e);
+        }
+    });
+
+    document.getElementById('export-save').addEventListener('click', async () => {
+        const selectedPatchIndex = parseInt(document.getElementById('patch-select').value);
+        const selectedPatch = links[selectedPatchIndex];
+
+        const saveDataBuffer = await loadSaveData(selectedPatch.id);
+        if (!saveDataBuffer || isSaveDataGarbage(saveDataBuffer)) {
+            alert('No save data found, please save your game first.');
+            return;
+        }
+
+        saveFile(saveDataBuffer, selectedPatch.name + '.sav');
+    });
 });
+
+function selectedHack() {
+    const patchIndex = parseInt(document.getElementById('patch-select').value);
+    return links[patchIndex];
+}
+
+async function updateHackInfo() {
+    const selectedPatch = selectedHack();
+    document.getElementById('hack-info').classList.remove('hidden');
+
+    const hackNameElement = document.getElementById('hack-name');
+    const hackAuthorElement = document.getElementById('hack-author');
+    const hackLinkElement = document.getElementById('hack-link');
+    const noHackLinkElement = document.getElementById('no-hack-link');
+
+    const loadSaveButton = document.getElementById('load-save');
+    const exportSaveButton = document.getElementById('export-save');
+
+    hackNameElement.textContent = selectedPatch.name;
+    hackAuthorElement.textContent = 'by ' + selectedPatch.author;
+
+    const saveInfoElement = document.getElementById('save-info');
+    const noSaveElement = document.getElementById('no-save');
+    saveInfoElement.classList.add('hidden');
+    noSaveElement.classList.add('hidden');
+    exportSaveButton.classList.add('hidden');
+
+    if (selectedPatch.page) {
+        hackLinkElement.href = selectedPatch.page;
+        hackLinkElement.classList.remove('hidden');
+        noHackLinkElement.classList.add('hidden');
+    } else {
+        hackLinkElement.classList.add('hidden');
+        noHackLinkElement.classList.remove('hidden');
+    }
+
+    // Update save info
+    const saveDataBuffer = await loadSaveData(selectedPatch.id);
+    saveInfoElement.classList.remove('hidden');
+
+    if (saveDataBuffer && !isSaveDataGarbage(saveDataBuffer)) {
+        try {
+            const saveData = readSaveData(saveDataBuffer);
+            console.log('Read save data:', saveData);
+
+            noSaveElement.classList.add('hidden');
+            saveInfoElement.classList.remove('hidden');
+
+            document.getElementById('save-hero-name').textContent = saveData.heroName || 'No hero name';
+            document.getElementById('save-team-name').textContent = saveData.teamName || 'No team name';
+
+            const adventures = saveData.numberOfAdventures || 0;
+            document.getElementById('save-adventures').textContent = adventures + ' adventure' + (adventures === 1 ? '' : 's');
+
+            exportSaveButton.classList.remove('hidden');
+        } catch (e) {
+            reportError(e);
+        }
+
+    } else {
+        noSaveElement.classList.remove('hidden');
+        saveInfoElement.classList.add('hidden');
+    }
+}
 
 document.addEventListener('fullscreenchange', onFullScreenChange);
 document.addEventListener('webkitfullscreenchange', onFullScreenChange);

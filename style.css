@@ -26,6 +26,10 @@ h1 {
     text-align: center;
 }
 
+h3 {
+    margin: 12px 0;
+}
+
 .input-wrapper {
     display: flex;
     flex-direction: row;
@@ -72,6 +76,10 @@ input[type="file"]:active {
     margin-top: 16px;
 }
 
+.button-container.spaced {
+    justify-content: space-between;
+}
+
 button {
     background-color: #dbb460;
     border: none;
@@ -103,6 +111,17 @@ button[disabled] {
     cursor: not-allowed;
 }
 
+a {
+    color: #c5901f;
+    text-decoration: none;
+}
+
+a:hover,
+a:active,
+a:focus {
+    text-decoration: underline;
+}
+
 .apply-button {
     margin-top: 20px;
 }
@@ -124,6 +143,15 @@ button[disabled] {
 
 .hidden {
     display: none !important;
+}
+
+.external-link {
+    display: flex;
+    align-items: center;
+}
+
+.external-link span {
+    font-size: 1rem;
 }
 
 #player-container {
@@ -228,6 +256,7 @@ button[disabled] {
     margin-bottom: 4px;
 }
 
+.settings-menu .close-button,
 .close-button,
 .close-button:disabled {
     position: absolute;
@@ -237,4 +266,21 @@ button[disabled] {
     border: none;
     padding: 8px;
     color: black;
+}
+
+.settings-menu .close-button:hover,
+.settings-menu .close-button:focus,
+.settings-menu .close-button:active,
+.close-button:hover,
+.close-button:focus,
+.close-button:active {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+#save-info {
+    margin: 16px 0;
+}
+
+#save-info p {
+    margin: 2px 0;
 }

@@ -3,6 +3,7 @@
 
 <head>
     <title>EoS Hack Player</title>
+    <meta charset="UTF-8">
 
     <script src="vendor/vcdiff.js"></script>
     <script src="index.js?v=2" type="module"></script>
@@ -70,6 +71,52 @@
                 </button>
             </div>
             <p class="error"></p>
+
+            <div id="hack-info" class="hidden">
+                <h2 id="hack-name">Hack name</h2>
+                <p id="hack-author">by someone</p>
+                <a id="hack-link" class="external-link" href="#" target="_blank">
+                    View hack on hacks.skytemple.org
+                    <span class="material-symbols-outlined">
+                        open_in_new
+                    </span>
+                </a>
+                <p id="no-hack-link" class="hidden">
+                    This hack is not available on hacks.skytemple.org.
+                </p>
+
+                <h3>Save file options</h3>
+                <p id="no-save">No save file found.</p>
+                <div id="save-info" class="hidden">
+                    <p>
+                        <span id="save-hero-name">Pikachu</span> / <span id="save-team-name">Poképals</span>
+                    </p>
+                    <p>
+                        <span id="save-adventures">0 adventures</span>
+                    </p>
+                </div>
+
+                <div class="button-container spaced">
+                    <button id="load-save" type="button">
+                        <span class="material-symbols-outlined">
+                            file_upload
+                        </span>
+                        Import save file
+                    </button>
+                    <button id="export-save" type="button" class="hidden">
+                        <span class="material-symbols-outlined">
+                            save
+                        </span>
+                        Export save file
+                    </button>
+                    <button id="delete-save" type="button" class="hidden">
+                        <span class="material-symbols-outlined">
+                            delete
+                        </span>
+                        Delete save file
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -85,14 +132,14 @@
                     settings
                 </span>
             </button>
-            <button id="fullscreen" title="Enter fullscreen">
-                <span class="material-symbols-outlined">
-                    fullscreen
-                </span>
-            </button>
             <button id="save-backup" title="Backup save data">
                 <span class="material-symbols-outlined">
                     download
+                </span>
+            </button>
+            <button id="fullscreen" title="Enter fullscreen">
+                <span class="material-symbols-outlined">
+                    fullscreen
                 </span>
             </button>
         </div>

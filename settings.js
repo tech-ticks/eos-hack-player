@@ -29,7 +29,7 @@ export const DEFAULT_KEYBOARD_BINDINGS = [
     'q',          // L (mapped to Q)
     'w',          // R (mapped to W)
     undefined,    // Debug button
-    'Backspace'   // Lid (mapped to Backspace)
+    undefined     // Lid
 ];
 
 export const keyboardMappings = [...DEFAULT_KEYBOARD_BINDINGS];
