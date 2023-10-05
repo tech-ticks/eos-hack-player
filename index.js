@@ -85,7 +85,7 @@ function getAndCheckRomRegion(rom) {
 function saveFile(bytes, name) {
     const link = document.createElement('a');
     link.href = createUrlFromBytes(bytes);
-    link.download = `${name || 'patched'}.nds`;
+    link.download = name;
     link.click();
 
     URL.revokeObjectURL(link.href);
@@ -129,7 +129,7 @@ function removeError() {
     }
 }
 
-function loadPlayer(url, name) {
+async function loadPlayer(url, gameId, name) {
     // Patch desmond's keymap
     desmondPatch();
 
@@ -139,10 +139,67 @@ function loadPlayer(url, name) {
     const playerContainer = document.getElementById('player-container');
     playerContainer.classList.remove('hidden');
 
+    const saveData = await localforage.getItem('save-' + gameId);
+
     const player = document.getElementById('player');
-    player.loadURL(url);
+    player.loadURL(url, () => {
+        // Load the save data
+        if (saveData) {
+            Module.HEAPU8.set(saveData, Module._savGetPointer(saveData.length))
+            Module._savUpdateChangeFlag();
+            console.log('Loaded save data');
+        }
+    });
 
     document.title = `${name} - EoS Hack Player`;
+
+    document.getElementById('settings').addEventListener('click', () => {
+        const settings = document.getElementById('settings-menu');
+        settings.classList.remove('hidden');
+    });
+
+    document.getElementById('back').addEventListener('click', () => {
+        window.location.reload();
+    });
+
+    document.getElementById('save-backup').addEventListener('click', () => {
+        const size = Module._savGetSize();
+        if (size == 0) {
+            alert('No save data found, please save your game first.');
+            return;
+        }
+
+        const ptr = Module._savGetPointer(0);
+        const buffer = new Uint8Array(size);
+        buffer.set(Module.HEAPU8.subarray(ptr, ptr + size));
+        if (buffer[0] == 0xff) {
+            alert('No save data found, please save your game first.');
+            return;
+        }
+
+        saveFile(buffer, gameId + '.sav');
+    });
+
+    let previousSaveFlag = 0;
+
+    setInterval(() => {
+        // Logic adapted from desmond.js `checkSaveGame` function
+        const saveFlag = Module._savUpdateChangeFlag();
+        if (saveFlag == 0 && previousSaveFlag == 1) {
+            console.log('Save detected');
+
+            const size = Module._savGetSize();
+            const ptr = Module._savGetPointer(0);
+            const buffer = new Uint8Array(size);
+            buffer.set(Module.HEAPU8.subarray(ptr, ptr + size));
+
+            // desmond.js auto-loads a save file with this naming convention
+            localforage.setItem('save-' + gameId, buffer).then(() => {
+                console.log('Game saved.');
+            });
+        }
+        previousSaveFlag = saveFlag;
+    }, 1000);
 }
 
 async function createPatchSelect(links) {
@@ -262,9 +319,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (shouldPlay) {
                 const url = createUrlFromBytes(patchedRom);
-                loadPlayer(url, link.name);
+                await loadPlayer(url, link.id, link.name);
             } else {
-                saveFile(patchedRom, getFileNameFromUrl(link.patch));
+                saveFile(patchedRom, link.name + '.nds');
             }
         } catch (e) {
             reportError(e);
@@ -293,15 +350,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (player.requestFullscreen) {
             player.requestFullscreen();
         }
-    });
-
-    document.getElementById('settings').addEventListener('click', () => {
-        const settings = document.getElementById('settings-menu');
-        settings.classList.remove('hidden');
-    });
-
-    document.getElementById('back').addEventListener('click', () => {
-        window.location.reload();
     });
 });
 
