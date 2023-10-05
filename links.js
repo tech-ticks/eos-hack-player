@@ -38,5 +38,28 @@ export default [
     author: "J.L. Polybo, Axcel, shimxshimx, and JaiFain",
     region: "us",
     page: "https://hacks.skytemple.org/h/nymblesstory"
-  }
+  }, {
+    id: "chimera",
+    name: "Artificial Revenant Chimera",
+    patch: "xdelta/ARC1.1.xdelta",
+    author: "Cait Sith",
+    region: "us",
+    page: "https://hacks.skytemple.org/h/chimera"
+  },
+  {
+    id: "eoflag",
+    name: "Pokémon: Explorers of Flags",
+    patch: "xdelta/EoFlag.xdelta",
+    author: "Irdkwia",
+    region: "us",
+    page: undefined
+  },
+  {
+    id: "cryptic_conundrum",
+    name: "Cryptic Conundrum",
+    patch: "xdelta/CC.xdelta",
+    author: "Espik",
+    region: "us",
+    page: "https://hacks.skytemple.org/h/cryptic_conundrum"
+  },
 ];
