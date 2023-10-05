@@ -1,3 +1,5 @@
+import links from './links.js';
+
 const CLEAN_US_SHA1 = '5fa96ca8d8dd6405d6cd2bad73ed68bc73a9d152';
 const CLEAN_EU_SHA1 = 'c838a5adf1ed32d2da8454976e5b1a1aa189c139';
 
@@ -34,7 +36,7 @@ function applyPatch(romBytes, patchBytes) {
 
 async function ensureCleanRom(rom, romRegion) {
     const expectedSha1 = getCleanSha1ForRegion(romRegion);
-    const romSha1 = sha1(rom);
+    const romSha1 = await sha1(rom);
     console.log(`[cleaning] ROM sha1: ${romSha1}, expected sha1: ${expectedSha1}`);
 
     if (expectedSha1 !== romSha1) {
@@ -79,11 +81,9 @@ function getAndCheckRomRegion(rom) {
     }
 }
 
-function downloadFile(bytes, name) {
-    const blob = new Blob([bytes], { type: 'application/octet-stream' });
-
+function saveFile(bytes, name) {
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
+    link.href = createUrlFromBytes(bytes);
     link.download = `${name || 'patched'}.nds`;
     link.click();
 
@@ -99,7 +99,7 @@ function getCleanSha1ForRegion(region) {
     return region === 'us' ? CLEAN_US_SHA1 : CLEAN_EU_SHA1;
 }
 
-function getPatchNameFromUrl(url) {
+function getFileNameFromUrl(url) {
     const lastSegment = url.includes('/') ? url.split('/').pop() : url;
 
     // Return the file name without extension
@@ -154,34 +154,97 @@ async function createPatchSelect(links) {
         option.innerText = `${link.name} (by ${link.author})`;
         select.appendChild(option);
     }
-
-    globalThis.links = links;
 }
 
-async function downloadLinks() {
-    const result = await fetch('links.json');
-    if (!result.ok) {
-        throw new HttpStatusError(`Failed to fetch patch links(code ${result.status})`, result.status);
+async function patchRom(link, region, validationSha1, button, file) {
+    const patchUrl = link.patch;
+    const patchRegion = link.region ?? 'us';
+
+    button.innerText = 'Patching (1/7)...';
+
+    const reader = new FileReader();
+    const readPromise = new Promise((resolve, reject) => {
+        reader.onload = evt => resolve(new Uint8Array(evt.target.result));
+        reader.onerror = error => reject(error);
+    });
+
+    reader.readAsArrayBuffer(file);
+
+    const rom = await readPromise;
+
+    let patch;
+    if (patchUrl) {
+        button.innerText = 'Patching (2/7)...';
+        const result = await downloadPatch(patchUrl, region);
+        patch = result.patch;
     }
-    return await result.json();
+
+    button.innerText = 'Patching (3/7)...';
+    const romRegion = getAndCheckRomRegion(rom);
+    const cleanRom = await ensureCleanRom(rom, romRegion);
+
+    let patchedRom = cleanRom;
+    let expectedSha1;
+    if (patchUrl) {
+        button.innerText = 'Patching (4/7)...';
+        const romInExpectedRegion = await ensureExpectedRegion(cleanRom, romRegion, patchRegion);
+
+        button.innerText = 'Patching (5/7)...';
+        await new Promise(resolve => setTimeout(resolve, 20)); // Update the UI
+
+        expectedSha1 = getCleanSha1ForRegion(patchRegion);
+        console.log(`Validating checksum against clean SHA - 1 "${expectedSha1}"`);
+        const romSha1 = await sha1(romInExpectedRegion);
+        if (romSha1 !== expectedSha1) {
+            throw new Error(`Failed to clean rom or transition region(checksum mismatch: ${romSha1})`);
+        }
+
+        button.innerText = 'Patching (6/7)...';
+        await new Promise(resolve => setTimeout(resolve, 20)); // Update the UI
+
+        console.log('Applying the ROM hack patch...');
+        patchedRom = applyPatch(romInExpectedRegion, patch);
+    }
+
+    if (validationSha1) {
+        button.innerText = 'Patching (7/7)...';
+        console.log(`Validating checksum against user - provided validation SHA - 1 "${expectedSha1}"`);
+        const patchedRomSha1 = await sha1(patchedRom);
+        if (patchedRomSha1 !== validationSha1.toLowerCase()) {
+            throw new Error(`Failed to patch ROM(checksum mismatch: ${patchedRomSha1})`);
+        }
+    }
+
+    return patchedRom;
+}
+
+async function sha1(arrayBuffer) {
+    const hashBuffer = await crypto.subtle.digest('SHA-1', arrayBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    downloadLinks().then(createPatchSelect).catch(console.error);
+    createPatchSelect(links);
 
     const fileInput = document.getElementById('rom-file');
-    const submitButton = document.getElementById('submit');
+    const playButton = document.getElementById('play-button');
+    const saveButton = document.getElementById('save-button');
+    const inProgressButton = document.getElementById('in-progress');
 
     const params = new URLSearchParams(window.location.search);
 
-    const patchName = params.get('name');
     const region = params.get('region') || 'us';
     const validationSha1 = params.get('sha1');
 
     fileInput.addEventListener('change', () => {
-        submitButton.disabled = !fileInput.files
+        const disabled = !fileInput.files
             || !fileInput.files.length
             || !fileInput.files[0].name.endsWith('.nds');
+
+        playButton.disabled = disabled;
+        saveButton.disabled = disabled;
     });
 
     document.getElementById('fullscreen').addEventListener('click', () => {
@@ -193,82 +256,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    submitButton.addEventListener('click', async () => {
-        submitButton.disabled = true;
-        submitButton.innerText = 'Patching (1/7)...';
+    const onClick = async (shouldPlay) => {
+        playButton.classList.add('hidden');
+        saveButton.classList.add('hidden');
+        inProgressButton.classList.remove('hidden');
         removeError();
 
         try {
             const patchIndex = parseInt(document.getElementById('patch-select').value);
-            const link = globalThis.links[patchIndex];
-            const patchUrl = link.patch;
-            const patchRegion = link.region ?? 'us';
+            const link = links[patchIndex];
 
-            const file = fileInput.files[0];
+            const patchedRom = await patchRom(link, region, validationSha1, inProgressButton, fileInput.files[0]);
 
-            const reader = new FileReader();
-            const readPromise = new Promise((resolve, reject) => {
-                reader.onload = evt => resolve(new Uint8Array(evt.target.result));
-                reader.onerror = error => reject(error);
-            });
-
-            reader.readAsArrayBuffer(file);
-
-            const rom = await readPromise;
-
-            let patch;
-            if (patchUrl) {
-                submitButton.innerText = 'Patching (2/7)...';
-                const result = await downloadPatch(patchUrl, region);
-                patch = result.patch;
+            if (shouldPlay) {
+                const url = createUrlFromBytes(patchedRom);
+                loadPlayer(url, link.name);
+            } else {
+                saveFile(patchedRom, getFileNameFromUrl(link.patch));
             }
-
-            submitButton.innerText = 'Patching (3/7)...';
-            const romRegion = getAndCheckRomRegion(rom);
-            const cleanRom = await ensureCleanRom(rom, romRegion);
-
-            let patchedRom = cleanRom;
-            let expectedSha1;
-            if (patchUrl) {
-                submitButton.innerText = 'Patching (4/7)...';
-                const romInExpectedRegion = await ensureExpectedRegion(cleanRom, romRegion, patchRegion);
-
-                submitButton.innerText = 'Patching (5/7)...';
-                await new Promise(resolve => setTimeout(resolve, 20)); // Update the UI
-
-                expectedSha1 = getCleanSha1ForRegion(patchRegion);
-                console.log(`Validating checksum against clean SHA - 1 "${expectedSha1}"`);
-                const romSha1 = sha1(romInExpectedRegion);
-                if (romSha1 !== expectedSha1) {
-                    throw new Error(`Failed to clean rom or transition region(checksum mismatch: ${romSha1})`);
-                }
-
-                submitButton.innerText = 'Patching (6/7)...';
-                await new Promise(resolve => setTimeout(resolve, 20)); // Update the UI
-
-                console.log('Applying the ROM hack patch...');
-                patchedRom = applyPatch(romInExpectedRegion, patch);
-            }
-
-            if (validationSha1) {
-                submitButton.innerText = 'Patching (7/7)...';
-                console.log(`Validating checksum against user - provided validation SHA - 1 "${expectedSha1}"`);
-                const patchedRomSha1 = sha1(patchedRom);
-                if (patchedRomSha1 !== validationSha1.toLowerCase()) {
-                    throw new Error(`Failed to patch ROM(checksum mismatch: ${patchedRomSha1})`);
-                }
-            }
-
-            const url = createUrlFromBytes(patchedRom);
-
-            loadPlayer(url, link.name);
         } catch (e) {
             reportError(e);
             console.error(e);
         } finally {
-            submitButton.disabled = false;
-            submitButton.innerText = 'Download and Patch';
+            playButton.classList.remove('hidden');
+            saveButton.classList.remove('hidden');
+            inProgressButton.classList.add('hidden');
         }
+    };
+
+    playButton.addEventListener('click', async () => {
+        await onClick(true);
+    });
+    saveButton.addEventListener('click', async () => {
+        await onClick(false);
     });
 });
 
@@ -277,9 +297,9 @@ document.addEventListener('webkitfullscreenchange', onFullScreenChange);
 
 function onFullScreenChange() {
     if (document.fullscreenElement) {
-        document.getElementById('fullscreen').classList.add('hidden');
+        document.querySelector('.controls').classList.add('hidden');
     } else {
-        document.getElementById('fullscreen').classList.remove('hidden');
+        document.querySelector('.controls').classList.remove('hidden');
     }
 }
 
