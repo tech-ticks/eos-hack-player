@@ -1,5 +1,5 @@
 import links from './links.js';
-import { readSaveData } from './pmd-save.js';
+import { readSaveData } from './pmd-save.js?v=2';
 import { initSettingsView, isSettingsMenuOpen, keyboardMappings, loadKeyBindings } from './settings.js';
 
 const CLEAN_US_SHA1 = '5fa96ca8d8dd6405d6cd2bad73ed68bc73a9d152';
@@ -590,6 +590,15 @@ async function updateHackInfo() {
 
             document.getElementById('save-hero-name').textContent = saveData.heroName || 'No hero name';
             document.getElementById('save-team-name').textContent = saveData.teamName || 'No team name';
+
+            const playTimeInSeconds = saveData.playTimeInSeconds || 0;
+            let hours = Math.floor(playTimeInSeconds / 3600);
+            if (hours < 10) hours = '0' + hours;
+            let minutes = Math.floor((playTimeInSeconds % 3600) / 60);
+            if (minutes < 10) minutes = '0' + minutes;
+            let seconds = Math.floor(playTimeInSeconds % 60);
+            if (seconds < 10) seconds = '0' + seconds;
+            document.getElementById('save-playtime').textContent = `${hours}:${minutes}:${seconds}`;
 
             const adventures = saveData.numberOfAdventures || 0;
             document.getElementById('save-adventures').textContent = adventures + ' adventure' + (adventures === 1 ? '' : 's');

@@ -8,12 +8,15 @@ export function readSaveData(buffer) {
     const partnerName = decodeAndCleanString(buffer, 0x149, 0x149, 10);
     const teamName = decodeAndCleanString(buffer, 0x994e, 10);
     const numberOfAdventures = read32BitInteger(buffer, 0x8B70);
+    const playTimeInOne64thSeconds = read32BitInteger(buffer, 0x9960);
+    const playTimeInSeconds = playTimeInOne64thSeconds / 64;
 
     return {
         heroName,
         partnerName,
         teamName,
-        numberOfAdventures
+        numberOfAdventures,
+        playTimeInSeconds
     };
 }
 
