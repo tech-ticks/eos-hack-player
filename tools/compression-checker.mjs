@@ -1,15 +1,16 @@
-const fs = require('fs');
-const child_process = require('child_process');
+import * as fs from 'fs';
+import * as child_process from 'child_process';
+
+import links from '../links.js';
 
 const ROM_PATH_US = '/Users/admin/nds/PMDSkyUS.nds';
 
 async function main() {
-    const links = require('./links.json');
 
     // Download each file
     for (const item of links) {
         const path = item.patch;
-        const buffer = fs.readFileSync(path);
+        const buffer = fs.readFileSync('../' + path);
 
         // Check VCDIFF magic (0xD6C3C4)
         if (buffer[0] !== 0xD6 || buffer[1] !== 0xC3 || buffer[2] !== 0xC4) {
@@ -24,6 +25,8 @@ async function main() {
             child_process.spawnSync('xdelta3', ['-e', '-S', '-f', '-s', ROM_PATH_US, 'temp.nds', path], { stdio: 'inherit' });
             fs.unlinkSync('temp.nds');
         }
+
+        console.log('Done:', path);
     }
 }
 

@@ -218,6 +218,18 @@ async function loadPlayer(url, gameId, name) {
         saveFile(buffer, name + '.sav');
     });
 
+    const toggleFastForward = document.getElementById('toggle-fastforward');
+    toggleFastForward.addEventListener('click', () => {
+        const isFastForward = globalThis.config.powerSave;
+        if (isFastForward) {
+            globalThis.config.powerSave = false;
+            toggleFastForward.querySelector('span').innerHTML = 'play_arrow';
+        } else {
+            globalThis.config.powerSave = true;
+            toggleFastForward.querySelector('span').innerHTML = 'fast_forward';
+        }
+    });
+
     let previousSaveFlag = 0;
 
     setInterval(() => {
