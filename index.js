@@ -210,7 +210,7 @@ async function loadPlayer(url, gameId, name) {
         const ptr = Module._savGetPointer(0);
         const buffer = new Uint8Array(size);
         buffer.set(Module.HEAPU8.subarray(ptr, ptr + size));
-        if (!isSaveDataGarbage(buffer)) {
+        if (isSaveDataGarbage(buffer)) {
             alert('No save data found, please save your game first.');
             return;
         }
@@ -255,22 +255,11 @@ async function createPatchSelect(links) {
     }
 }
 
-async function patchRom(link, region, validationSha1, button, file) {
+async function patchRom(link, region, validationSha1, button, rom) {
     const patchUrl = link.patch;
     const patchRegion = link.region ?? 'us';
 
     button.innerText = 'Patching (1/7)...';
-
-    const reader = new FileReader();
-    const readPromise = new Promise((resolve, reject) => {
-        reader.onload = evt => resolve(new Uint8Array(evt.target.result));
-        reader.onerror = error => reject(error);
-    });
-
-    reader.readAsArrayBuffer(file);
-
-    const rom = await readPromise;
-
     let patch;
     if (patchUrl) {
         button.innerText = 'Patching (2/7)...';
@@ -317,6 +306,50 @@ async function patchRom(link, region, validationSha1, button, file) {
     return patchedRom;
 }
 
+async function readRomFile(file) {
+    const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = evt => resolve(new Uint8Array(evt.target.result));
+        reader.onerror = error => reject(error);
+        reader.readAsArrayBuffer(file);
+    });
+
+    const rom = {
+        name: file.name,
+        data
+    };
+
+    console.log(`Loaded ROM: ${rom.name}`);
+    return rom;
+}
+
+async function cacheRom(file) {
+    console.log('Caching ROM...');
+    await localforage.setItem('cached-rom', file);
+}
+
+async function clearCachedRom() {
+    console.log('Clearing cached ROM...');
+    await localforage.removeItem('cached-rom');
+}
+
+async function loadCachedRom() {
+    const rom = await localforage.getItem('cached-rom');
+    if (!rom) return null;
+
+    const inputWrapper = document.getElementById('rom-input-wrapper');
+    const loadedRomElem = document.getElementById('loaded-rom');
+
+    document.getElementById('rom-name').textContent = rom.name;
+    inputWrapper.classList.add('hidden');
+    loadedRomElem.classList.remove('hidden');
+
+    document.getElementById('play-button').disabled = false;
+    document.getElementById('save-button').disabled = false;
+
+    return rom;
+}
+
 async function sha1(arrayBuffer) {
     const hashBuffer = await crypto.subtle.digest('SHA-1', arrayBuffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -327,7 +360,11 @@ async function sha1(arrayBuffer) {
 document.addEventListener('DOMContentLoaded', () => {
     createPatchSelect(links);
 
+    const inputWrapper = document.getElementById('rom-input-wrapper');
+    const loadedRomElem = document.getElementById('loaded-rom');
+
     const fileInput = document.getElementById('rom-file');
+    const removeRomButton = document.getElementById('remove-rom');
     const playButton = document.getElementById('play-button');
     const saveButton = document.getElementById('save-button');
     const inProgressButton = document.getElementById('in-progress');
@@ -337,13 +374,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const region = params.get('region') || 'us';
     const validationSha1 = params.get('sha1');
 
-    fileInput.addEventListener('change', () => {
-        const disabled = !fileInput.files
-            || !fileInput.files.length
-            || !fileInput.files[0].name.endsWith('.nds');
+    let romFile = null;
 
-        playButton.disabled = disabled;
-        saveButton.disabled = disabled;
+    fileInput.addEventListener('change', async () => {
+        if (!fileInput.files
+            || !fileInput.files.length
+            || !fileInput.files[0].name.endsWith('.nds')
+        ) {
+            return;
+        }
+        fileInput.disabled = true;
+
+        const file = fileInput.files[0];
+        romFile = await readRomFile(file);
+        await cacheRom(romFile);
+        document.getElementById('rom-name').textContent = romFile.name;
+        inputWrapper.classList.add('hidden');
+        loadedRomElem.classList.remove('hidden');
+
+        playButton.disabled = false;
+        saveButton.disabled = false;
+    });
+
+    removeRomButton.addEventListener('click', () => {
+        romFile = null;
+        fileInput.value = '';
+        fileInput.disabled = false;
+        inputWrapper.classList.remove('hidden');
+        loadedRomElem.classList.add('hidden');
+
+        playButton.disabled = true;
+        saveButton.disabled = true;
+
+        clearCachedRom();
     });
 
     const onClick = async (shouldPlay) => {
@@ -356,7 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const patchIndex = parseInt(document.getElementById('patch-select').value);
             const link = links[patchIndex];
 
-            const patchedRom = await patchRom(link, region, validationSha1, inProgressButton, fileInput.files[0]);
+            const patchedRom = await patchRom(link, region, validationSha1, inProgressButton, romFile.data);
 
             if (shouldPlay) {
                 const url = createUrlFromBytes(patchedRom);
@@ -408,6 +471,12 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('patch-select').value = patchIndex;
         }
     }
+    loadCachedRom().then(file => {
+        if (file) {
+            romFile = file;
+        }
+    });
+
     updateHackInfo(); // Update the hack info on page load
 
     document.getElementById('load-save').addEventListener('click', async () => {
@@ -447,6 +516,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         saveFile(saveDataBuffer, selectedPatch.name + '.sav');
     });
+
+    document.getElementById('delete-save').addEventListener('click', async () => {
+        const selectedPatchIndex = parseInt(document.getElementById('patch-select').value);
+        const selectedPatch = links[selectedPatchIndex];
+
+        if (confirm(`Are you sure you want to delete the save data for ${selectedPatch.name}?`)) {
+            await localforage.removeItem('save-' + selectedPatch.id);
+            await updateHackInfo();
+        }
+    });
 });
 
 function selectedHack() {
@@ -463,8 +542,8 @@ async function updateHackInfo() {
     const hackLinkElement = document.getElementById('hack-link');
     const noHackLinkElement = document.getElementById('no-hack-link');
 
-    const loadSaveButton = document.getElementById('load-save');
     const exportSaveButton = document.getElementById('export-save');
+    const deleteSaveButton = document.getElementById('delete-save');
 
     hackNameElement.textContent = selectedPatch.name;
     hackAuthorElement.textContent = 'by ' + selectedPatch.author;
@@ -474,6 +553,7 @@ async function updateHackInfo() {
     saveInfoElement.classList.add('hidden');
     noSaveElement.classList.add('hidden');
     exportSaveButton.classList.add('hidden');
+    deleteSaveButton.classList.add('hidden');
 
     if (selectedPatch.page) {
         hackLinkElement.href = selectedPatch.page;
@@ -503,6 +583,7 @@ async function updateHackInfo() {
             document.getElementById('save-adventures').textContent = adventures + ' adventure' + (adventures === 1 ? '' : 's');
 
             exportSaveButton.classList.remove('hidden');
+            deleteSaveButton.classList.remove('hidden');
         } catch (e) {
             reportError(e);
         }

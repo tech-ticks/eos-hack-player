@@ -35,9 +35,21 @@
                 Your ROM will not be uploaded anywhere. It will be patched in your browser.
             </p>
 
-            <div class="input-wrapper">
+            <div id="rom-input-wrapper" class="input-wrapper">
                 <label for="rom-file">Select or Drag and Drop a ROM file:</label>
                 <input id="rom-file" type="file">
+            </div>
+
+            <div id="loaded-rom" class="hidden">
+                <label>Loaded ROM:</label>
+                <span class="rom-name-and-remove">
+                    <span id="rom-name">No ROM loaded</span>
+                    <button id="remove-rom" class="close-button">
+                        <span class="material-symbols-outlined">
+                            close
+                        </span>
+                    </button>
+                </span>
             </div>
 
             <h2>2. Choose a ROM hack to play</h2>
@@ -134,7 +146,7 @@
             </button>
             <button id="save-backup" title="Backup save data">
                 <span class="material-symbols-outlined">
-                    download
+                    save
                 </span>
             </button>
             <button id="fullscreen" title="Enter fullscreen">
@@ -149,7 +161,7 @@
     </div>
 
     <div class="settings-menu hidden" id="settings-menu">
-        <button id="close-settings" class="close-button">
+        <button id="close-settings" class="close-button close-button-absolute">
             <span class="material-symbols-outlined">
                 close
             </span>
