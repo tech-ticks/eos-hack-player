@@ -225,10 +225,10 @@ async function loadPlayer(url, gameId, name) {
         const isFastForward = globalThis.config.frameSkip === 2;
         if (isFastForward) {
             globalThis.config.frameSkip = 1;
-            toggleFastForward.querySelector('span').innerHTML = 'play_arrow';
+            toggleFastForward.querySelector('span').innerHTML = 'fast_forward';
         } else {
             globalThis.config.frameSkip = 2;
-            toggleFastForward.querySelector('span').innerHTML = 'fast_forward';
+            toggleFastForward.querySelector('span').innerHTML = 'play_arrow';
         }
     });
 
