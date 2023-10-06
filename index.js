@@ -186,6 +186,8 @@ async function loadPlayer(url, gameId, name) {
             Module.HEAPU8.set(saveData, Module._savGetPointer(saveData.length))
             Module._savUpdateChangeFlag();
             console.log('Loaded save data');
+            globalThis.config.frameSkip = 1;
+            globalThis.config.powerSave = false;
         }
     });
 
@@ -220,12 +222,12 @@ async function loadPlayer(url, gameId, name) {
 
     const toggleFastForward = document.getElementById('toggle-fastforward');
     toggleFastForward.addEventListener('click', () => {
-        const isFastForward = globalThis.config.powerSave;
+        const isFastForward = globalThis.config.frameSkip === 2;
         if (isFastForward) {
-            globalThis.config.powerSave = false;
+            globalThis.config.frameSkip = 1;
             toggleFastForward.querySelector('span').innerHTML = 'play_arrow';
         } else {
-            globalThis.config.powerSave = true;
+            globalThis.config.frameSkip = 2;
             toggleFastForward.querySelector('span').innerHTML = 'fast_forward';
         }
     });
