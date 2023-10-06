@@ -519,8 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('export-save').addEventListener('click', async () => {
-        const selectedPatchIndex = parseInt(document.getElementById('patch-select').value);
-        const selectedPatch = links[selectedPatchIndex];
+        const selectedPatch = selectedHack();
 
         const saveDataBuffer = await loadSaveData(selectedPatch.id);
         if (!saveDataBuffer || isSaveDataGarbage(saveDataBuffer)) {
@@ -532,10 +531,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('delete-save').addEventListener('click', async () => {
-        const selectedPatchIndex = parseInt(document.getElementById('patch-select').value);
-        const selectedPatch = links[selectedPatchIndex];
+        const selectedPatch = selectedHack();
 
-        if (confirm(`Are you sure you want to delete the save data for ${selectedPatch.name}?`)) {
+        let text = `Are you sure you want to delete the save data for ${selectedPatch.name}? Deleted save data cannot be recovered.`;
+        if (selectedPatch.id === 'strungupbysketches' || selectedPatch.id === 'fantariem') {
+            text += '\n\nDeleting the save data will reset ALL your game progress. To trigger an in-game event, you will need to start the game and delete your save data under Other - Delete Save Data instead.';
+        }
+
+        if (confirm(text)) {
             await localforage.removeItem('save-' + selectedPatch.id);
             await updateHackInfo();
         }
