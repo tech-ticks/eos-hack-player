@@ -29,6 +29,19 @@ function read16BitInteger(buffer, offset) {
 }
 
 function decodeAndCleanString(buffer, start, length) {
+    const end = start + length;
+    let nullTerminatorIndex = -1;
+
+    for (let i = start; i < end; i++) {
+        if (buffer[i] === 0) {
+            nullTerminatorIndex = i;
+            break;
+        }
+    }
+
+    // If a null terminator is found, update the end index
+    const sliceEnd = nullTerminatorIndex >= 0 ? nullTerminatorIndex : end;
+
     const decoder = new TextDecoder('windows-1252');
-    return decoder.decode(buffer.slice(start, start + length)).replace(/\0/g, '');
+    return decoder.decode(buffer.slice(start, sliceEnd));
 }

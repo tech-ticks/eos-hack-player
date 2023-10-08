@@ -80,9 +80,13 @@ input[type="file"]:active {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
     border-radius: 4px;
     padding-left: 16px;
+    height: 40px;
+}
+
+.rom-name-and-remove #rom-name {
+    padding-right: 16px;
 }
 
 .button-container {

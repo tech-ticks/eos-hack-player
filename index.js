@@ -13,59 +13,93 @@ class HttpStatusError extends Error {
     }
 }
 
-async function downloadPatch(url, defaultRegion) {
+async function downloadPatch(url) {
     console.log(`Downloading patch '${url}'...`)
 
-    const result = await fetch(url);
+    let result;
+    try {
+        result = await fetch(url);
+    } catch (e) {
+        throw new Error(`Failed to download patch, please check your internet connection.`);
+    }
     if (!result.ok) {
         throw new HttpStatusError(`Failed to fetch patch '${url} (code ${result.status})'`, result.status);
     }
 
-    const patch = new Uint8Array(await result.arrayBuffer());
+    const reader = result.body.getReader();
+    const contentLength = parseInt(result.headers.get('Content-Length'));
+    const contentLengthMb = contentLength / 1024 / 1024;
+    console.log(`Patch size: ${contentLengthMb.toFixed(2)} MB`);
 
-    // The region header, if set, has priority over the region passed as a query parameter.
-    const region = result.headers['X-SkyTemple-Region'] || defaultRegion;
-    return { patch, region };
+    const patch = new Uint8Array(contentLength);
+    let offset = 0;
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        patch.set(value, offset);
+        offset += value.length;
+
+        const progress = offset / contentLength;
+        console.log(`Download progress: ${(progress * 100).toFixed(2)}% `);
+    }
+
+    return { patch };
 }
+
+const worker = new Worker('patch-worker.js');
+let invocationId = 0;
 
 function applyPatch(romBytes, patchBytes) {
     console.log('Applying the patch...');
 
-    const romFile = new MarcFile(romBytes);
-    const patchFile = new MarcFile(patchBytes);
-    return new VCDIFF(patchFile).apply(romFile)._u8array;
+    const currentInvocationId = ++invocationId;
+    return new Promise((resolve, reject) => {
+        worker.onmessage = function (e) {
+            const result = e.data;
+            const { invocationId: resultInvocationId, data } = result;
+
+            if (resultInvocationId === currentInvocationId) {
+                resolve(data);
+            }
+        };
+
+        worker.onerror = function (error) {
+            reject(error);
+        };
+
+        worker.postMessage({ invocationId: currentInvocationId, romBytes, patchBytes });
+    });
 }
 
-async function ensureCleanRom(rom, romRegion) {
+async function isRomClean(romSha1, romRegion) {
     const expectedSha1 = getCleanSha1ForRegion(romRegion);
-    const romSha1 = await sha1(rom);
-    console.log(`[cleaning] ROM sha1: ${romSha1}, expected sha1: ${expectedSha1}`);
+    return expectedSha1 === romSha1;
+}
 
-    if (expectedSha1 !== romSha1) {
-        try {
-            const { patch } = await downloadPatch(`patches/${romRegion}/from/${romSha1.toUpperCase()}.xdelta`);
-            return applyPatch(rom, patch);
-        } catch (e) {
-            if (e instanceof HttpStatusError && e.statusCode == 404) {
-                // An unsupported dump was provided if no patch was found
-                throw new UserError(`The provided ROM is incompatible. Please try again with a clean ROM. (Checksum of the provided ROM: "${romSha1}")`);
-            } else {
-                throw e;
-            }
+async function cleanRom(rom, romRegion, romSha1) {
+    try {
+        const { patch } = await downloadPatch(`patches/${romRegion}/from/${romSha1.toUpperCase()}.xdelta`);
+        return await applyPatch(rom, patch);
+    }
+    catch (e) {
+        if (e instanceof HttpStatusError && e.statusCode == 404) {
+            // An unsupported dump was provided if no patch was found
+            throw new UserError(`The provided ROM is incompatible. Please try again with a clean ROM. (Checksum of the provided ROM: "${romSha1}")`);
+        } else {
+            throw e;
         }
-    } else {
-        return rom;
     }
 }
 
-async function ensureExpectedRegion(rom, romRegion, expectedRegion) {
-    console.log(`ROM region: ${romRegion}, expected region: ${expectedRegion}`);
+async function ensureExpectedRegion(romData, romRegion, expectedRegion) {
+    console.log(`ROM region: ${romRegion}, expected region: ${expectedRegion} `);
 
     if (romRegion !== expectedRegion) {
         const { patch } = await downloadPatch(`patches/${romRegion}-to-${expectedRegion}.xdelta`);
-        return applyPatch(rom, patch);
+        return await applyPatch(romData, patch);
     } else {
-        return rom;
+        return romData;
     }
 }
 
@@ -75,16 +109,17 @@ function isSaveDataGarbage(saveData) {
 }
 
 function getAndCheckRomRegion(rom) {
-    // Read ROM region from gamecode (see http://problemkaputt.de/gbatek.htm#dscartridgeheader)
-    const regionCode = String.fromCharCode(rom[0xF]);
-    if (regionCode === 'E') { // US ("English")
+    // Read gamecode (see http://problemkaputt.de/gbatek.htm#dscartridgeheader)
+    const gameCode = String.fromCharCode(...rom.slice(0xC, 0xC + 4));
+
+    if (gameCode === 'C2SE') { // E (US, "English")
         return 'us';
-    } else if (regionCode === 'P') { // Europe
+    } else if (gameCode === 'C2SP') { // E (Europe)
         return 'eu';
-    } else if (regionCode === 'J') { // Japan
+    } else if (gameCode === 'C2SJ') { // J (Japan)
         return 'jp';
     } else {
-        throw new UserError('The region of your ROM is not supported. Only US, EU and Japanese roms are currently supported.');
+        throw new UserError('The provided ROM is not an Explorers of Sky ROM.');
     }
 }
 
@@ -269,48 +304,35 @@ async function createPatchSelect(links) {
     }
 }
 
-async function patchRom(link, region, validationSha1, button, rom) {
+async function patchRom(rom, link, region, validationSha1, button) {
     const patchUrl = link.patch;
     const patchRegion = link.region ?? 'us';
 
-    button.innerText = 'Patching (1/7)...';
     let patch;
     if (patchUrl) {
-        button.innerText = 'Patching (2/7)...';
+        button.innerText = 'Downloading patch (1/3)...';
         const result = await downloadPatch(patchUrl, region);
         patch = result.patch;
     }
 
-    button.innerText = 'Patching (3/7)...';
-    const romRegion = getAndCheckRomRegion(rom);
-    const cleanRom = await ensureCleanRom(rom, romRegion);
-
-    let patchedRom = cleanRom;
+    let patchedRom = rom.data;
     let expectedSha1;
     if (patchUrl) {
-        button.innerText = 'Patching (4/7)...';
-        const romInExpectedRegion = await ensureExpectedRegion(cleanRom, romRegion, patchRegion);
-
-        button.innerText = 'Patching (5/7)...';
-        await new Promise(resolve => setTimeout(resolve, 20)); // Update the UI
+        button.innerText = 'Patching (2/3)...';
+        const romInExpectedRegion = await ensureExpectedRegion(rom.data, rom.region, patchRegion);
 
         expectedSha1 = getCleanSha1ForRegion(patchRegion);
-        console.log(`Validating checksum against clean SHA - 1 "${expectedSha1}"`);
-        const romSha1 = await sha1(romInExpectedRegion);
-        if (romSha1 !== expectedSha1) {
-            throw new Error(`Failed to clean rom or transition region(checksum mismatch: ${romSha1})`);
-        }
+        console.log(`Validating checksum against clean SHA-1 "${expectedSha1}"`);
 
-        button.innerText = 'Patching (6/7)...';
-        await new Promise(resolve => setTimeout(resolve, 20)); // Update the UI
+        button.innerText = 'Patching (3/3)...';
 
         console.log('Applying the ROM hack patch...');
-        patchedRom = applyPatch(romInExpectedRegion, patch);
+        patchedRom = await applyPatch(romInExpectedRegion, patch);
     }
 
     if (validationSha1) {
-        button.innerText = 'Patching (7/7)...';
-        console.log(`Validating checksum against user - provided validation SHA - 1 "${expectedSha1}"`);
+        button.innerText = 'Validating...';
+        console.log(`Validating checksum against user - provided validation SHA-1 "${expectedSha1}"`);
         const patchedRomSha1 = await sha1(patchedRom);
         if (patchedRomSha1 !== validationSha1.toLowerCase()) {
             throw new Error(`Failed to patch ROM(checksum mismatch: ${patchedRomSha1})`);
@@ -333,30 +355,34 @@ async function readRomFile(file) {
         data
     };
 
-    console.log(`Loaded ROM: ${rom.name}`);
+    console.log(`Loaded ROM: ${rom.name} `);
     return rom;
 }
 
 async function cacheRom(file) {
     console.log('Caching ROM...');
-    await localforage.setItem('cached-rom', file);
+    await localforage.setItem('saved-rom', file);
+    // Delete the legacy cache key if present
+    localforage.removeItem('cached-rom').catch(console.error);
 }
 
 async function clearCachedRom() {
     console.log('Clearing cached ROM...');
-    await localforage.removeItem('cached-rom');
+    await localforage.removeItem('saved-rom');
 }
 
 async function loadCachedRom() {
-    const rom = await localforage.getItem('cached-rom');
+    const rom = await localforage.getItem('saved-rom');
     if (!rom) return null;
 
     const inputWrapper = document.getElementById('rom-input-wrapper');
     const loadedRomElem = document.getElementById('loaded-rom');
+    const removeRomElem = document.getElementById('remove-rom');
 
     document.getElementById('rom-name').textContent = rom.name;
     inputWrapper.classList.add('hidden');
     loadedRomElem.classList.remove('hidden');
+    removeRomElem.classList.remove('hidden');
 
     document.getElementById('play-button').disabled = false;
     document.getElementById('save-button').disabled = false;
@@ -400,14 +426,47 @@ document.addEventListener('DOMContentLoaded', () => {
         fileInput.disabled = true;
 
         const file = fileInput.files[0];
-        romFile = await readRomFile(file);
-        await cacheRom(romFile);
-        document.getElementById('rom-name').textContent = romFile.name;
+
+        const romNameElem = document.getElementById('rom-name');
+        romNameElem.textContent = "Loading...";
+
         inputWrapper.classList.add('hidden');
         loadedRomElem.classList.remove('hidden');
+        removeRomButton.classList.add('hidden');
 
-        playButton.disabled = false;
-        saveButton.disabled = false;
+        try {
+            romFile = await readRomFile(file);
+            const romRegion = getAndCheckRomRegion(romFile.data);
+            romFile.region = romRegion;
+
+            let romSha1 = await sha1(romFile.data);
+            if (!await isRomClean(romSha1, romRegion)) {
+                romNameElem.textContent = "Cleaning ROM...";
+                romFile.data = await cleanRom(romFile.data, romRegion, romSha1);
+
+                romSha1 = await sha1(romFile.data);
+            }
+
+            if (romSha1 !== getCleanSha1ForRegion(romRegion)) {
+                throw new Error(`Failed to clean rom(checksum mismatch: ${romSha1})`);
+            }
+
+            await cacheRom(romFile);
+            romNameElem.textContent = romFile.name;
+
+            playButton.disabled = false;
+            saveButton.disabled = false;
+            removeRomButton.classList.remove('hidden');
+        } catch (e) {
+            reportError(e);
+            console.error(e);
+
+            romFile = null;
+            fileInput.value = '';
+            fileInput.disabled = false;
+            inputWrapper.classList.remove('hidden');
+            loadedRomElem.classList.add('hidden');
+        }
     });
 
     removeRomButton.addEventListener('click', () => {
@@ -433,7 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const patchIndex = parseInt(document.getElementById('patch-select').value);
             const link = links[patchIndex];
 
-            const patchedRom = await patchRom(link, region, validationSha1, inProgressButton, romFile.data);
+            const patchedRom = await patchRom(romFile, link, region, validationSha1, inProgressButton);
 
             if (shouldPlay) {
                 const url = createUrlFromBytes(patchedRom);
