@@ -5,8 +5,8 @@
     <title>EoS Hack Player</title>
     <meta charset="UTF-8">
 
-    <script src="vendor/desmond.js?v=2" defer></script>
-    <script src="index.js?v=8" type="module"></script>
+    <script src="vendor/desmond.js?v=3" defer></script>
+    <script src="index.js?v=9" type="module"></script>
 
     <link rel="stylesheet" href="style.css?v=3">
     <link rel="stylesheet"
@@ -176,66 +176,93 @@
 
         <h2>Keyboard bindings</h2>
 
-        <div class="input-wrapper">
-            <label for="button-a">A</label>
-            <button id="button-a" class="key-button" data-key="a">Key</button>
-        </div>
-        <div class="input-wrapper">
-            <label for="button-b">B</label>
-            <button id="button-b" class="key-button" data-key="b">Key</button>
-        </div>
-        <div class="input-wrapper">
-            <label for="button-x">X</label>
-            <button id="button-x" class="key-button" data-key="x">Key</button>
-        </div>
-        <div class="input-wrapper">
-            <label for="button-y">Y</label>
-            <button id="button-y" class="key-button" data-key="y">Key</button>
-        </div>
-        <div class="input-wrapper">
-            <label for="button-l">L</label>
-            <button id="button-l" class="key-button" data-key="l">Key</button>
-        </div>
-        <div class="input-wrapper">
-            <label for="button-r">R</label>
-            <button id="button-r" class="key-button" data-key="r">Key</button>
-        </div>
-        <div class="input-wrapper">
-            <label for="button-start">Start</label>
-            <button id="button-start" class="key-button" data-key="start">Key</button>
-        </div>
-        <div class="input-wrapper">
-            <label for="button-select">Select</label>
-            <button id="button-select" class="key-button" data-key="select">Key</button>
-        </div>
-        <div class="input-wrapper">
-            <label for="button-up">Up</label>
-            <button id="button-up" class="key-button" data-key="up">Key</button>
-        </div>
-        <div class="input-wrapper">
-            <label for="button-down">Down</label>
-            <button id="button-down" class="key-button" data-key="down">Key</button>
-        </div>
-        <div class="input-wrapper">
-            <label for="button-left">Left</label>
-            <button id="button-left" class="key-button" data-key="left">Key</button>
-        </div>
-        <div class="input-wrapper">
-            <label for="button-right">Right</label>
-            <button id="button-right" class="key-button" data-key="right">Key</button>
-        </div>
-        <div class="input-wrapper">
-            <label for="button-debug">Debug</label>
-            <button id="button-debug" class="key-button" data-key="debug">Key</button>
-        </div>
-        <div class="input-wrapper">
-            <label for="button-lid">Open/Close Lid</label>
-            <button id="button-lid" class="key-button" data-key="lid">Key</button>
-        </div>
+        <div class="bindings">
+            <div class="buttons-left">
+                <div class="input-wrapper">
+                    <label for="button-a">A</label>
+                    <button id="button-a" class="key-button" data-key="a">Key</button>
+                </div>
+                <div class="input-wrapper">
+                    <label for="button-b">B</label>
+                    <button id="button-b" class="key-button" data-key="b">Key</button>
+                </div>
+                <div class="input-wrapper">
+                    <label for="button-x">X</label>
+                    <button id="button-x" class="key-button" data-key="x">Key</button>
+                </div>
+                <div class="input-wrapper">
+                    <label for="button-y">Y</label>
+                    <button id="button-y" class="key-button" data-key="y">Key</button>
+                </div>
+                <div class="input-wrapper">
+                    <label for="button-l">L</label>
+                    <button id="button-l" class="key-button" data-key="l">Key</button>
+                </div>
+                <div class="input-wrapper">
+                    <label for="button-r">R</label>
+                    <button id="button-r" class="key-button" data-key="r">Key</button>
+                </div>
+                <div class="input-wrapper">
+                    <label for="button-start">Start</label>
+                    <button id="button-start" class="key-button" data-key="start">Key</button>
+                </div>
+                <div class="input-wrapper">
+                    <label for="button-select">Select</label>
+                    <button id="button-select" class="key-button" data-key="select">Key</button>
+                </div>
+                <div class="input-wrapper">
+                    <label for="button-up">Up</label>
+                    <button id="button-up" class="key-button" data-key="up">Key</button>
+                </div>
+                <div class="input-wrapper">
+                    <label for="button-down">Down</label>
+                    <button id="button-down" class="key-button" data-key="down">Key</button>
+                </div>
+                <div class="input-wrapper">
+                    <label for="button-left">Left</label>
+                    <button id="button-left" class="key-button" data-key="left">Key</button>
+                </div>
+                <div class="input-wrapper">
+                    <label for="button-right">Right</label>
+                    <button id="button-right" class="key-button" data-key="right">Key</button>
+                </div>
+                <div class="input-wrapper">
+                    <label for="button-debug">Debug</label>
+                    <button id="button-debug" class="key-button" data-key="debug">Key</button>
+                </div>
+            </div>
 
-        <button id="reset-keys" type="button">
-            Reset to default
-        </button>
+            <div class="buttons-right">
+                <div class="input-wrapper">
+                    <label for="button-lid">Open/Close Lid</label>
+                    <button id="button-lid" class="key-button" data-key="lid">Key</button>
+                </div>
+                <div class="input-wrapper">
+                    <label for="button-save-state">Save state</label>
+                    <button id="button-save-state" class="key-button" data-key="save-state">Key</button>
+                </div>
+                <div class="input-wrapper">
+                    <label for="button-load-state">Load state</label>
+                    <button id="button-load-state" class="key-button" data-key="load-state">Key</button>
+                </div>
+                <div class="input-wrapper">
+                    <label for="button-fast-forward">Toggle fast-forward</label>
+                    <button id="button-fast-forward" class="key-button" data-key="fast-forward">Key</button>
+                </div>
+
+                <button id="reset-keys" type="button">
+                    Reset to default
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="save-state-overlay" class="hidden">
+        <p>Creating save state...</p>
+    </div>
+
+    <div id="load-state-overlay" class="hidden">
+        <p>Loading save state...</p>
     </div>
 </body>
 

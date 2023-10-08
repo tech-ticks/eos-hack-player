@@ -12,7 +12,10 @@ export const KEY_INDICES = Object.freeze({
     'l': 10,
     'r': 11,
     'debug': 12,
-    'lid': 13
+    'lid': 13,
+    'save-state': 14,
+    'load-state': 15,
+    'fast-forward': 16,
 });
 
 export const DEFAULT_KEYBOARD_BINDINGS = [
@@ -29,7 +32,10 @@ export const DEFAULT_KEYBOARD_BINDINGS = [
     'q',          // L (mapped to Q)
     'w',          // R (mapped to W)
     undefined,    // Debug button
-    undefined     // Lid
+    undefined,    // Lid
+    undefined,    // Save state
+    undefined,    // Load state
+    undefined,    // Toggle speed-up
 ];
 
 export const keyboardMappings = [...DEFAULT_KEYBOARD_BINDINGS];
@@ -38,7 +44,10 @@ export function loadKeyBindings() {
     // Load keyboard mappings from local storage at initialization.
     const storedMappings = localStorage.getItem('keyboardMappings');
     if (storedMappings) {
-        Object.assign(keyboardMappings, JSON.parse(storedMappings));
+        const parsedMappings = JSON.parse(storedMappings);
+        if (Array.isArray(parsedMappings) && parsedMappings.length === DEFAULT_KEYBOARD_BINDINGS.length) {
+            keyboardMappings.splice(0, keyboardMappings.length, ...parsedMappings);
+        }
     }
 }
 

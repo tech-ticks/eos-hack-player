@@ -1,6 +1,6 @@
 import links from './links.js';
 import { readSaveData } from './pmd-save.js?v=2';
-import { initSettingsView, isSettingsMenuOpen, keyboardMappings, loadKeyBindings } from './settings.js';
+import { KEY_INDICES, initSettingsView, isSettingsMenuOpen, keyboardMappings, loadKeyBindings } from './settings.js';
 
 const CLEAN_US_SHA1 = '5fa96ca8d8dd6405d6cd2bad73ed68bc73a9d152';
 const CLEAN_EU_SHA1 = 'c838a5adf1ed32d2da8454976e5b1a1aa189c139';
@@ -255,16 +255,9 @@ async function loadPlayer(url, gameId, name) {
         saveFile(buffer, name + '.sav');
     });
 
-    const toggleFastForward = document.getElementById('toggle-fastforward');
-    toggleFastForward.addEventListener('click', () => {
-        const isFastForward = globalThis.config.frameSkip === 2;
-        if (isFastForward) {
-            globalThis.config.frameSkip = 1;
-            toggleFastForward.querySelector('span').innerHTML = 'fast_forward';
-        } else {
-            globalThis.config.frameSkip = 2;
-            toggleFastForward.querySelector('span').innerHTML = 'play_arrow';
-        }
+    const toggleFastForwardElem = document.getElementById('toggle-fastforward');
+    toggleFastForwardElem.addEventListener('click', () => {
+        toggleFastForward();
     });
 
     let previousSaveFlag = 0;
@@ -690,6 +683,18 @@ function onFullScreenChange() {
     }
 }
 
+function toggleFastForward() {
+    const elem = document.getElementById('toggle-fastforward');
+    const isFastForward = globalThis.config.frameSkip === 2;
+    if (isFastForward) {
+        globalThis.config.frameSkip = 1;
+        elem.querySelector('span').innerHTML = 'fast_forward';
+    } else {
+        globalThis.config.frameSkip = 2;
+        elem.querySelector('span').innerHTML = 'play_arrow';
+    }
+}
+
 // Replace Desmond's keymap
 function desmondPatch() {
     window.onkeydown = window.onkeyup = (e) => {
@@ -699,7 +704,21 @@ function desmondPatch() {
         }
         var isDown = (e.type === "keydown");
         var k = convertKey(e.key);
-        if (k >= 0) {
+
+        if (isDown) {
+            if (e.key === keyboardMappings[KEY_INDICES['save-state']]) {
+                config.createSaveStateNextFrame = true;
+                e.preventDefault();
+            } else if (e.key === keyboardMappings[KEY_INDICES['load-state']]) {
+                config.loadSaveState = true;
+                e.preventDefault();
+            } else if (e.key === keyboardMappings[KEY_INDICES['fast-forward']]) {
+                toggleFastForward();
+                e.preventDefault();
+            }
+        }
+
+        if (k >= 0 && k <= 13) {
             emuKeyState[k] = isDown;
             e.preventDefault();
         }

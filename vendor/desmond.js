@@ -2985,7 +2985,15 @@ if (player) {
             keyMask |= 1 << 14
         }*/
 
-        if (config.loadSaveState) {
+        if (config.createSaveStateNextFrame) {
+            await createSaveState();
+            if (!sessionStorage.getItem('saveStateCreatedWarningShown')) {
+                alert('Save state created. Please note that save states are not preserved when you close the page.');
+                sessionStorage.setItem('saveStateCreatedWarningShown', 'true');
+            }
+        }
+
+        if (config.loadSaveState && config.saveState) {
             await loadSaveState();
         }
 
@@ -2994,10 +3002,6 @@ if (player) {
                 Module._runFrame(0, keyMask, touched, touchX, touchY)
             }
             Module._runFrame(1, keyMask, touched, touchX, touchY)
-        }
-
-        if (config.createSaveStateNextFrame) {
-            await createSaveState();
         }
 
         ctx2d[0].putImageData(FB[0], 0, 0)
@@ -3022,6 +3026,12 @@ if (player) {
     }
 
     async function createSaveState() {
+        const element = document.getElementById('save-state-overlay');
+        element.classList.remove('hidden');
+
+        // Make sure that the UI is updated before we start creating the savestate
+        await new Promise(resolve => setTimeout(resolve, 0));
+
         console.time('Create savestate');
 
         const heapArray = Module.HEAPU8;
@@ -3041,9 +3051,16 @@ if (player) {
         config.createSaveStateNextFrame = false;
 
         console.timeEnd('Create savestate');
+        element.classList.add('hidden');
     }
 
     async function loadSaveState() {
+        const element = document.getElementById('load-state-overlay');
+        element.classList.remove('hidden');
+
+        // Make sure that the UI is updated before we start loading the savestate
+        await new Promise(resolve => setTimeout(resolve, 0));
+
         console.time('Load savestate');
 
         const ds = new DecompressionStream('gzip');
@@ -3069,6 +3086,8 @@ if (player) {
 
         config.loadSaveState = false;
         console.timeEnd('Load savestate');
+
+        element.classList.add('hidden');
     }
 
     // Helper function to convert a ReadableStream to a Uint8Array
