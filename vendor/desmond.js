@@ -2971,7 +2971,7 @@ if (player) {
         }, 1000)
     }
 
-    function emuRunFrame(frameSkip) {
+    async function emuRunFrame(frameSkip) {
         processGamepadInput()
         var keyMask = 0;
         for (var i = 0; i < 14; i++) {
@@ -2985,11 +2985,19 @@ if (player) {
             keyMask |= 1 << 14
         }*/
 
+        if (config.loadSaveState) {
+            await loadSaveState();
+        }
+
         for (let i = 0; i < frameSkip; i++) {
             if (config.powerSave) {
                 Module._runFrame(0, keyMask, touched, touchX, touchY)
             }
             Module._runFrame(1, keyMask, touched, touchX, touchY)
+        }
+
+        if (config.createSaveStateNextFrame) {
+            await createSaveState();
         }
 
         ctx2d[0].putImageData(FB[0], 0, 0)
@@ -3013,6 +3021,78 @@ if (player) {
         Module._setSampleRate(47860)
     }
 
+    async function createSaveState() {
+        console.time('Create savestate');
+
+        const heapArray = Module.HEAPU8;
+        const cs = new CompressionStream('gzip');
+        const writer = cs.writable.getWriter();
+
+        const writePromise = (async () => {
+            await writer.write(heapArray);
+            await writer.close();
+        })();
+
+        const readPromise = streamToUint8Array(cs.readable);
+
+        const [_, compressedData] = await Promise.all([writePromise, readPromise]);
+
+        config.saveState = compressedData;
+        config.createSaveStateNextFrame = false;
+
+        console.timeEnd('Create savestate');
+    }
+
+    async function loadSaveState() {
+        console.time('Load savestate');
+
+        const ds = new DecompressionStream('gzip');
+        const writer = ds.writable.getWriter();
+
+        const writePromise = writer.write(config.saveState).finally(() => writer.close());
+
+        const reader = ds.readable.getReader();
+        let offset = 0;
+
+        const readPromise = (async () => {
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                // Copy the decompressed data chunk to Module.HEAPU8
+                Module.HEAPU8.set(value, offset);
+                offset += value.length;
+            }
+        })();
+
+        await Promise.all([writePromise, readPromise]);
+
+        config.loadSaveState = false;
+        console.timeEnd('Load savestate');
+    }
+
+    // Helper function to convert a ReadableStream to a Uint8Array
+    async function streamToUint8Array(readableStream) {
+        const reader = readableStream.getReader();
+        const chunks = [];
+        let totalLength = 0;
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            totalLength += value.length;
+        }
+
+        const result = new Uint8Array(totalLength);
+        let offset = 0;
+        for (const chunk of chunks) {
+            result.set(chunk, offset);
+            offset += chunk.length;
+        }
+
+        return result;
+    }
 
     function checkSaveGame() {
         var saveUpdateFlag = Module._savUpdateChangeFlag()
@@ -3157,6 +3237,8 @@ registerProcessor('my-worklet', MyAudioWorklet)`], { type: "text/javascript" }))
         }
     }
 
+    config.isPromiseResolved = true;
+
     var prevRunFrameTime = performance.now()
     function emuLoop(timestamp) {
         window.requestAnimationFrame(emuLoop)
@@ -3174,7 +3256,13 @@ registerProcessor('my-worklet', MyAudioWorklet)`], { type: "text/javascript" }))
             prevRunFrameTime = timestamp;
 
             const frameSkip = config.frameSkip || 1;
-            emuRunFrame(frameSkip)
+
+            if (config.isPromiseResolved) {
+                config.isPromiseResolved = false;
+                emuRunFrame(frameSkip).then(() => {
+                    config.isPromiseResolved = true;
+                });
+            }
         }
     }
     emuLoop(performance.now())
