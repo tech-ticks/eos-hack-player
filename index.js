@@ -260,6 +260,13 @@ async function loadPlayer(url, gameId, name) {
         toggleFastForward();
     });
 
+    window.addEventListener('beforeunload', (event) => {
+        const message = "Are you sure you want to exit? You might lose unsaved progress.";
+        event.returnValue = message;
+        return message;
+    });
+
+
     let previousSaveFlag = 0;
 
     setInterval(() => {
