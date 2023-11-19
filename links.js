@@ -34,7 +34,7 @@ export default [
   {
     id: "nymblesstory",
     name: "Nymble's Story",
-    patch: "xdelta/Nymble's Story v1.2.1.xdelta",
+    patch: "xdelta/Nymbles_Story_v1.3_SEQUENCED.xdelta",
     author: "J.L. Polybo, Axcel, shimxshimx, and JaiFain",
     region: "us",
     page: "https://hacks.skytemple.org/h/nymblesstory"
